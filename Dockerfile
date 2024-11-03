@@ -1,19 +1,27 @@
-FROM buildpack-deps:vivid
+# Use a modern and supported Debian base image for 2024
+FROM debian:bookworm-slim
 
-# fix broken default apt mirrors
-RUN sed -i "s/httpredir.debian.org/`curl -s -D - http://httpredir.debian.org/demo/debian/ | awk '/^Link:/ { print $2 }' | sed -e 's@<http://\(.*\)/debian/>;@\1@g'`/" /etc/apt/sources.list
+# Set environment variables for non-interactive apt commands
+ENV DEBIAN_FRONTEND=noninteractive
 
-# install deps
-RUN apt-get clean && apt-get -qq update && apt-get -qq install -y \
+# Ensure the sources.list file exists and update it
+RUN [ -f /etc/apt/sources.list ] || echo 'deb http://deb.debian.org/debian bookworm main' > /etc/apt/sources.list && \
+    sed -i 's|http://deb.debian.org/debian|mirror://mirrors.debian.org/debian|' /etc/apt/sources.list
+
+# Install dependencies
+RUN apt update && \
+    apt install -y --no-install-recommends \
         build-essential \
-        qt5-default \
+        qtbase5-dev \
         libboost-all-dev \
         libfftw3-dev \
-        libavutil-ffmpeg-dev \
-        libavresample-ffmpeg-dev \
-        libavcodec-ffmpeg-dev \
-        libavformat-ffmpeg-dev && \
-    apt-get clean
+        libavutil-dev \
+        libavresample-dev \
+        libavcodec-dev \
+        libavformat-dev
+
+# Ensure curl is installed for downloading purposes (optional if needed later)
+RUN apt update && apt install -y curl && apt clean && rm -rf /var/lib/apt/lists/*
 
 # install libKeyFinder
 RUN cd /tmp && \
